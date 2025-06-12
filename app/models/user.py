@@ -9,7 +9,7 @@ class RoleEnum(Enum):
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(70), unique=True, nullable=False)
+    name = db.Column(db.String(70), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     role = db.Column(db.Enum(RoleEnum), default=RoleEnum.SELLER, nullable=False)

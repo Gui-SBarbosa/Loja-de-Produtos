@@ -1,3 +1,5 @@
+from flask_jwt_extended import get_jwt_identity
+
 from app.models.product import Product
 from app.extension import db
 
@@ -9,7 +11,6 @@ def create_product_service(data, seller_id):
     quantity = data.get('quantity')
 
     if not all ([name, value, description, quantity]):
-        print('Campos obrigatórios ausentes')
         return False, {'error': 'Campos obrigatórios ausentes'}, 400
 
     product = Product(
@@ -22,32 +23,46 @@ def create_product_service(data, seller_id):
 
     db.session.add(product)
     db.session.commit()
-    print('Produto cadastrado com sucesso')
-    return product
+    return True, product, 201
 
 
 def list_seller_product_by_id(seller_id):
-    return Product.query.filter_by(id_seller=seller_id).all()
+    products = Product.query.filter_by(id_seller=seller_id).all()
+
+    if not products:
+        return True, {"message": "Nenhum produto foi criado por essa loja"}, 200
+
+    return True, products, 200
 
 
 def update_product_service(product, data):
+    if not product:
+        return False, {'error': 'Produto não encontrado ou sem permissão'}, 404
+
     product.name_product = data.get('name_product', product.name_product)
     product.value = data.get('value', product.value)
     product.description = data.get('description', product.description)
     product.quantity = data.get('quantity', product.quantity)
+
     db.session.commit()
-    print('Produto atualizado com sucesso')
-    return product
+    return True, product, 201
 
 
-def delete_product_service(product):
+def delete_product_service(product_id, seller_id):
+    product = Product.query.filter_by(id=product_id, id_seller=seller_id).first()
+
+    if not product:
+        return False, {'error': 'Produto não encontrado ou sem permissão'}, 404
+
+
     db.session.delete(product)
     db.session.commit()
+    return True, {'message': 'Produto deletado com sucesso'}, 200
 
 
 def list_all_product():
-    products = Product.query.all()
-    return products
+    return Product.query.all()
+
 
 def get_product_by_id(product_id):
     return Product.query.get(product_id)

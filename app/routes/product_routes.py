@@ -32,13 +32,15 @@ def create_product():
         return jsonify(errors), 400
 
     seller_id = get_jwt_identity()
-    product = create_product_service(data, seller_id)
+    success, result, status = create_product_service(data, seller_id)
+    if not success:
+        return jsonify(result), status
 
     return jsonify({
         "success": True,
         "message": "Produto criado com sucesso",
-        "product": ProductCreateResponse().dump(product)
-    }), 201
+        "product": ProductCreateResponse().dump(result)
+    }), status
 
 # Listar produtos
 @product_bp.route('/my',methods=['GET'])
@@ -46,9 +48,15 @@ def create_product():
 @role_required('SELLER')
 def list_my_products():
     seller_id = get_jwt_identity()
-    products = list_seller_product_by_id(int(seller_id))
+    success, result, status = list_seller_product_by_id(seller_id)
 
-    return jsonify(ProductCreateResponse(many=True).dump(products)), 200
+    if not success:
+        return jsonify(result), status
+
+    if isinstance(result, list):
+        return jsonify(ProductCreateResponse(many=True).dump(result)), status
+
+    return jsonify(result), status
 
 # Update
 @product_bp.route('/<int:product_id>', methods=['PUT'])
@@ -60,17 +68,21 @@ def update_product(product_id):
     if errors:
         return jsonify(errors), 400
 
-    seller_id = int(get_jwt_identity())
+    seller_id = get_jwt_identity()
     product = get_product_by_id(product_id)
 
+    if not product or product.id_seller != int(seller_id):
+        return jsonify({'error': 'Produto não encontrado ou sem permissão'}), 404
 
-    if not product:
-        return jsonify({'error': 'Produto não encontrado'}), 404
-    if product.id_seller != int(seller_id):
-        return jsonify({'error': 'Acesso negado'}), 403
+    success, result, status = update_product_service(product, data)
+    if not success:
+        return jsonify(result), status
 
-    updated = update_product_service(product, data)
-    return jsonify(ProductUpdateResponse().dump(updated)), 200
+    return jsonify({
+        "success": True,
+        "message": "Produto atualizado com sucesso",
+        "product": ProductUpdateResponse().dump(result)
+    }), status
 
 
 # Delete
@@ -79,15 +91,8 @@ def update_product(product_id):
 @role_required('SELLER')
 def delete_product(product_id):
     seller_id = get_jwt_identity()
-    product = get_product_by_id(product_id)
-
-    if not product:
-        return jsonify({'error': 'Produto não encontrado'}), 404
-    if product.id_seller != int(seller_id):
-        return jsonify({'error': 'Acesso negado'}), 403
-
-    delete_product_service(product)
-    return jsonify({'message': 'Produto deletado com sucesso'}), 200
+    success, result, status = delete_product_service(product_id, int(seller_id))
+    return jsonify(result), status
 
 
 # Rota ABERTA para listagem de produtos

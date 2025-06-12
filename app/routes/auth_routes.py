@@ -9,6 +9,10 @@ from app.schemas.user_schema import (
     UserRegisterSchema,
     UserResponseSchema
 )
+from app.services.auth_service import (
+    authenticate_user,
+    register_user
+)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -21,63 +25,33 @@ def register():
     if errors:
         return jsonify(errors), 400
 
-    name = data.get('name')
-    email = data.get('email')
-    password = data.get('password')
-    role = data.get('role')
+    success, result, status = register_user(data)
+    if not success:
+        return jsonify(result), status
 
-    if role not in RoleEnum.__members__:
-        print(f"Role inválida: {role}")
-        return jsonify({'error': 'Role inválida.'}), 400
-
-    if User.query.filter((User.email == email)).first():
-        return jsonify({'error': 'Email já existente. . .'}), 409
-
-    user = User(
-        name=name,
-        email=email,
-        role=RoleEnum(role)
-    )
-    user.set_password(password)
-
-    db.session.add(user)
-    db.session.commit()
-
+    user = result
     return jsonify({
-        'Success': 'True',
-        'message': 'Usuário criado com sucesso',
-        'user': UserResponseSchema().dump(user)
-    }), 201
+        "success": True,
+        "message": "Cadastro realizado com sucesso",
+        "user": UserResponseSchema().dump(user)
+    }), status
 
 @auth_bp.route('/login', methods=['GET'])
 def login():
     data = request.get_json()
-
-    email = data.get('email')
-    password = data.get('password')
 
     errors = UserLoginSchema().validate(data)
 
     if errors:
         return jsonify(errors), 400
 
+    success, result, status = authenticate_user(data)
 
-    if not email or not password:
-        print("Email e senha são obrigatórios.")
-        return jsonify({'error': 'Email e senha são obrigatórios.'}), 400
+    if not success:
+        return jsonify(result), status
 
-    user = User.query.filter_by(email=email).first()
-
-    if not user or not user.check_password(password):
-        print("Email ou senha inválidos.")
-        return jsonify({'error': 'Email ou senha inválidos'}), 401
-
-    acess_token = create_access_token(
-        identity=str(user.id),
-        additional_claims={"role": user.role.name},
-        expires_delta=timedelta(hours=2)
-    )
     return jsonify({
-        'success': True,
-        'message': 'Login realizado com sucesso',
-        'token': acess_token}), 200
+        "success": True,
+        "message": "Login realizado com sucesso",
+        **result
+    }), status

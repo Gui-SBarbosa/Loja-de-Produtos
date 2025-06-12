@@ -26,7 +26,7 @@ class ProductUpdateSchema(Schema):
 class ProductUpdateResponse(Schema):
     id = fields.Int(dump_only=True)
     name_product = fields.Str()
-    value_product = fields.Float()
+    value = fields.Float()
     description = fields.Str()
     quantity = fields.Int()
     updatedAt = fields.DateTime(dump_only=True)
